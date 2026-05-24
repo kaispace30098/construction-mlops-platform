@@ -3,6 +3,7 @@
 An MLOps service for construction cost prediction. Covers experiment tracking, CI/CD automation, champion/challenger model evaluation, containerised serving, and GitOps-based deployment via ArgoCD.
 
 ---
+<img width="2541" height="1144" alt="image" src="https://github.com/user-attachments/assets/235df238-d83c-43b7-b6af-415781898ddb" />
 
 ## Architecture
 
