@@ -7,8 +7,8 @@ An MLOps service for construction cost prediction. Covers experiment tracking, C
 ## Architecture
 
 ```
-construction-mlops-platform (this repo)        construction-gitops (Repo 2)
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+construction-cost-model (this repo)            construction-cost-gitops (Repo 2)
+────────────────────────────────────           ──────────────────────────────────
 src/train.py      -> train model               deployment.yaml
 src/evaluate.py   -> champion vs challenger    service.yaml
 src/preprocess.py -> feature engineering       ingress.yaml
@@ -113,18 +113,18 @@ python src/train.py
 ## Repository Structure
 
 ```
-construction-mlops-platform/
-â”œâ”€â”€ .github/
-â”‚   â””â”€â”€ workflows/
-â”‚       â””â”€â”€ train-deploy.yml   # CI/CD pipeline
-â”œâ”€â”€ data/
-â”‚   â””â”€â”€ construction_dataset.csv
-â”œâ”€â”€ src/
-â”‚   â”œâ”€â”€ preprocess.py          # Feature engineering and 70/15/15 split
-â”‚   â”œâ”€â”€ train.py               # Training, logging, holdout evaluation
-â”‚   â””â”€â”€ evaluate.py            # Champion vs challenger (coming next)
-â”œâ”€â”€ .env.example               # Environment variable template
-â”œâ”€â”€ .gitignore
-â”œâ”€â”€ requirements.txt
-â””â”€â”€ README.md
+construction-cost-model/
+|-- .github/
+|   \-- workflows/
+|       \-- train-deploy.yml       # CI/CD pipeline
+|-- data/
+|   \-- construction_dataset.csv
+|-- src/
+|   |-- preprocess.py              # Feature engineering and 70/15/15 split
+|   |-- train.py                   # Training, logging, holdout evaluation
+|   \-- evaluate.py                # Champion vs challenger (coming next)
+|-- .env.example                   # Environment variable template
+|-- .gitignore
+|-- requirements.txt
+\-- README.md
 ```
