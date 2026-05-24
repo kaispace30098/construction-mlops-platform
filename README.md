@@ -1,6 +1,6 @@
-# construction-mlops-platform
+# construction-cost-model
 
-An end-to-end MLOps platform for construction cost prediction, covering experiment tracking, CI/CD automation, model registry, and GitOps-based deployment.
+An MLOps service for construction cost prediction. Covers experiment tracking, CI/CD automation, champion/challenger model evaluation, containerised serving, and GitOps-based deployment via ArgoCD.
 
 ---
 
@@ -8,7 +8,7 @@ An end-to-end MLOps platform for construction cost prediction, covering experime
 
 ```
 construction-mlops-platform (this repo)        construction-gitops (Repo 2)
-──────────────────────────────────────         ────────────────────────────
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 src/train.py      -> train model               deployment.yaml
 src/evaluate.py   -> champion vs challenger    service.yaml
 src/preprocess.py -> feature engineering       ingress.yaml
@@ -114,17 +114,17 @@ python src/train.py
 
 ```
 construction-mlops-platform/
-├── .github/
-│   └── workflows/
-│       └── train-deploy.yml   # CI/CD pipeline
-├── data/
-│   └── construction_dataset.csv
-├── src/
-│   ├── preprocess.py          # Feature engineering and 70/15/15 split
-│   ├── train.py               # Training, logging, holdout evaluation
-│   └── evaluate.py            # Champion vs challenger (coming next)
-├── .env.example               # Environment variable template
-├── .gitignore
-├── requirements.txt
-└── README.md
+â”œâ”€â”€ .github/
+â”‚   â””â”€â”€ workflows/
+â”‚       â””â”€â”€ train-deploy.yml   # CI/CD pipeline
+â”œâ”€â”€ data/
+â”‚   â””â”€â”€ construction_dataset.csv
+â”œâ”€â”€ src/
+â”‚   â”œâ”€â”€ preprocess.py          # Feature engineering and 70/15/15 split
+â”‚   â”œâ”€â”€ train.py               # Training, logging, holdout evaluation
+â”‚   â””â”€â”€ evaluate.py            # Champion vs challenger (coming next)
+â”œâ”€â”€ .env.example               # Environment variable template
+â”œâ”€â”€ .gitignore
+â”œâ”€â”€ requirements.txt
+â””â”€â”€ README.md
 ```
