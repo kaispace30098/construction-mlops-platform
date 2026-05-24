@@ -1,0 +1,17 @@
+# Environment variables (contains credentials, never commit)
+.env
+
+# Local MLflow runs (using Railway now)
+mlruns/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/

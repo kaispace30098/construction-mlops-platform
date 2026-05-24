@@ -1,0 +1,55 @@
+name: Train and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # 手動觸發按鈕
+
+jobs:
+  # ─────────────────────────────────────────────────────────
+  # Job 1: Train → log to Railway MLflow
+  # ─────────────────────────────────────────────────────────
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Train and log to MLflow
+        env:
+          MLFLOW_TRACKING_URI:      ${{ secrets.MLFLOW_TRACKING_URI }}
+          MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+        run: python src/train.py
+
+  # ─────────────────────────────────────────────────────────
+  # Job 2: Evaluate — champion vs challenger (coming next)
+  # ─────────────────────────────────────────────────────────
+  # evaluate:
+  #   needs: train
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: python src/evaluate.py
+  #       → holdout 分數比 Production champion
+  #       → 贏了 → register to MLflow Staging
+  #       → 輸了 → CI fail，停止
+
+  # ─────────────────────────────────────────────────────────
+  # Job 3: Package — build Docker image (coming next)
+  # ─────────────────────────────────────────────────────────
+  # package:
+  #   needs: evaluate
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: docker build + push to ghcr.io
+  #     - run: update Repo 2 image tag → trigger ArgoCD
