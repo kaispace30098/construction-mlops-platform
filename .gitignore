@@ -12,6 +12,9 @@ __pycache__/
 venv/
 *.egg-info/
 
+# Model artifact downloaded by CI (not committed, rebuilt each run)
+model_artifact/
+
 # IDE
 .vscode/
 .idea/

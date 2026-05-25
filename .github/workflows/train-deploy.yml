@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   # ----------------------------------------------------------------
   # Job 1: Train model and log to MLflow
@@ -58,17 +62,58 @@ jobs:
           MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
           MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
         run: python src/evaluate.py
-        # exits 0 -> challenger wins, registered to Staging, Job 3 runs
-        # exits 1 -> challenger loses, CI stops here, nothing deployed
+        # exits 0 -> challenger wins, registered to Staging
+        # exits 1 -> challenger loses, CI stops here
 
   # ----------------------------------------------------------------
-  # Job 3: Package — build and push Docker image  [coming next]
+  # Job 3: Package — build and push Docker image to ghcr.io
   # ----------------------------------------------------------------
-  # package:
-  #   needs: evaluate
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Build and push image to ghcr.io
-  #       run: docker build + push
-  #     - name: Update image tag in GitOps repo (Repo 2)
-  #       run: trigger ArgoCD sync
+  package:
+    needs: evaluate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install MLflow to download model
+        run: pip install mlflow==2.22.0
+
+      - name: Download Staging model from MLflow
+        env:
+          MLFLOW_TRACKING_URI:      ${{ secrets.MLFLOW_TRACKING_URI }}
+          MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+        run: python scripts/download_model.py
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/construction-cost-model:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/construction-cost-model:latest
+
+      - name: Output image tag
+        run: echo "Image pushed ghcr.io/${{ github.repository_owner }}/construction-cost-model:${{ github.sha }}"
+
+      # ── Update Repo 2 image tag (coming next — needs construction-gitops repo) ──
+      # - name: Update GitOps repo
+      #   run: |
+      #     git clone https://x-token:${{ secrets.GITOPS_TOKEN }}@github.com/kaispace30098/construction-gitops.git
+      #     sed -i "s|image:.*|image: ghcr.io/${{ github.repository_owner }}/construction-cost-model:${{ github.sha }}|" construction-gitops/deployment.yaml
+      #     cd construction-gitops && git commit -am "update image to ${{ github.sha }}" && git push
