@@ -1,6 +1,6 @@
 # NEXT_STEPS.md
 # Last updated: 2026-05-24
-# Repo 1 (construction-cost-model) CI pipeline is COMPLETE.
+## Repo 1 (construction-cost-model) CI pipeline is COMPLETE.
 
 ---
 
