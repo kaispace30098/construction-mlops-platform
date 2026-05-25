@@ -1,7 +1,8 @@
+import glob
 import os
 
-import mlflow.pyfunc
 import pandas as pd
+import xgboost as xgb
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -22,8 +23,20 @@ MODEL_PATH = os.environ.get("MODEL_PATH", "/app/model")
 
 app = FastAPI(title="Construction Cost Predictor")
 
-# Load model once at startup
-model = mlflow.pyfunc.load_model(MODEL_PATH)
+# Load XGBoost Booster directly — bypasses the MLflow sklearn wrapper which has
+# a known _estimator_type bug in XGBoost 2.1.x when loading via pyfunc/xgboost flavour.
+# XGBRegressor.save_model() writes a pure Booster file (UBJSON/JSON); Booster.load_model()
+# reads it back without touching the sklearn layer at all.
+_model_files = (
+    glob.glob(f"{MODEL_PATH}/**/*.ubj", recursive=True)
+    + glob.glob(f"{MODEL_PATH}/**/*.xgb", recursive=True)
+    + glob.glob(f"{MODEL_PATH}/**/*.json", recursive=True)
+)
+if not _model_files:
+    raise RuntimeError(f"No XGBoost model file found under {MODEL_PATH}")
+
+booster = xgb.Booster()
+booster.load_model(_model_files[0])
 
 
 class PredictRequest(BaseModel):
@@ -55,6 +68,7 @@ def predict(req: PredictRequest):
     data["Risk_Level"] = RISK_MAP[data["Risk_Level"]]
 
     df = pd.DataFrame([data])[FEATURES]
-    prediction = float(model.predict(df)[0])
+    dmatrix = xgb.DMatrix(df)
+    prediction = float(booster.predict(dmatrix)[0])
 
     return PredictResponse(predicted_cost_usd=prediction)
