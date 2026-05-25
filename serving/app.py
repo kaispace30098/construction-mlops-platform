@@ -1,6 +1,6 @@
 import os
 
-import mlflow.xgboost
+import mlflow.pyfunc
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -23,7 +23,7 @@ MODEL_PATH = os.environ.get("MODEL_PATH", "/app/model")
 app = FastAPI(title="Construction Cost Predictor")
 
 # Load model once at startup
-model = mlflow.xgboost.load_model(MODEL_PATH)
+model = mlflow.pyfunc.load_model(MODEL_PATH)
 
 
 class PredictRequest(BaseModel):
