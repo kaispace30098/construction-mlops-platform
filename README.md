@@ -96,7 +96,7 @@ Every run records:
 ## Railway MLflow Setup
 
 Railway hosts the MLflow tracking server (PostgreSQL + MinIO + Caddy).
-**When you delete and recreate Railway, do these 3 things:**
+**When you delete and recreate Railway, do these 4 things:**
 
 ### 1. Update .env (local)
 
@@ -125,13 +125,42 @@ github.com/kaispace30098/construction-cost-model
 -> Update: MLFLOW_TRACKING_URI, MLFLOW_TRACKING_USERNAME, MLFLOW_TRACKING_PASSWORD
 ```
 
-### 4. Verify connection
+### 4. Trigger CI to populate new Railway MLflow
+
+Add a space anywhere in this README and push -- this triggers all 3 CI jobs,
+trains the model and registers it to Staging in the new Railway instance.
 
 ```powershell
-python src/train.py
+# add a space to README, then:
+git add README.md
+git commit -m "trigger CI for new Railway instance"
+git push origin main
 ```
 
-Check the new Railway MLflow UI -- a new run should appear.
+---
+
+## Starting Repo 2 (construction-cost-gitops)
+
+**Before starting ArgoCD / kind setup, do this first in Railway MLflow UI:**
+
+```
+Railway MLflow UI -> Models -> construction-cost-model
+-> find the latest Staging version
+-> click Stage -> transition to Production
+```
+
+This is required because evaluate.py compares new models against the Production
+champion. Without a Production model, every push registers to Staging (no gating).
+Once one version is Production, the 2% improvement threshold kicks in properly.
+
+**Then proceed with Repo 2:**
+- Create repo: construction-cost-gitops
+- Write deployment.yaml, service.yaml (pull image from ghcr.io/kaispace30098/construction-cost-model:latest)
+- Install ArgoCD in kind cluster
+- Connect ArgoCD to construction-cost-gitops
+- Uncomment the GitOps update block at the bottom of .github/workflows/train-deploy.yml
+  (search for GITOPS_TOKEN -- that block updates Repo 2 image tag automatically)
+- Add GITOPS_TOKEN to GitHub Secrets (personal access token with repo write access)
 
 ---
 
@@ -139,7 +168,7 @@ Check the new Railway MLflow UI -- a new run should appear.
 
 Requirements: Python 3.11+
 
-```bash
+```powershell
 # Install dependencies
 pip install -r requirements.txt
 
@@ -147,10 +176,10 @@ pip install -r requirements.txt
 cp .env.example .env
 # Fill in MLFLOW_TRACKING_URI, MLFLOW_TRACKING_USERNAME, MLFLOW_TRACKING_PASSWORD
 
-# Load env vars (PowerShell)
-Get-Content .env | Where-Object { $_ -match ''^[^#]'' } | ForEach-Object {
-    $k, $v = $_ -split ''='', 2
-    [System.Environment]::SetEnvironmentVariable($k.Trim(), $v.Trim(), ''Process'')
+# Load .env (PowerShell)
+Get-Content .env | Where-Object { $_ -match '^[^#]' } | ForEach-Object {
+    $k, $v = $_ -split '=', 2
+    [System.Environment]::SetEnvironmentVariable($k.Trim(), $v.Trim(), 'Process')
 }
 
 # Train locally
@@ -165,7 +194,7 @@ python src/train.py
 construction-cost-model/
 |-- .github/
 |   \-- workflows/
-|       \-- train-deploy.yml       # CI/CD pipeline
+|       \-- train-deploy.yml       # CI/CD pipeline (3 jobs)
 |-- data/
 |   \-- construction_dataset.csv
 |-- scripts/
@@ -183,11 +212,3 @@ construction-cost-model/
 |-- requirements-serve.txt         # Serving dependencies
 \-- README.md
 ```
-
----
-
-## What comes next
-
-Repo 2: `construction-cost-gitops`
-- Kubernetes manifests watched by ArgoCD
-- ArgoCD syncs to kind cluster when image tag is updated by this repo CI
