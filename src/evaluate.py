@@ -60,6 +60,7 @@ def register_as_staging(client, challenger_uri):
 def main():
     mlflow.set_tracking_uri(TRACKING_URI)
     client = MlflowClient()
+    print(f"DEBUG tracking URI : {mlflow.get_tracking_uri()}")
 
     # Holdout set — same random_state as train.py so same rows every time
     _, _, X_holdout, _, _, y_holdout = load_and_split(DATA_PATH)
