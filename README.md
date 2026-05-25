@@ -9,7 +9,7 @@ An MLOps service for construction cost prediction. Covers experiment tracking, C
 
 ```
 construction-cost-model (this repo)            construction-cost-gitops (Repo 2)
-────────────────────────────────────           ──────────────────────────────────
+------------------------------------           ----------------------------------
 src/train.py      -> train model               deployment.yaml
 src/evaluate.py   -> champion vs challenger    service.yaml
 src/preprocess.py -> feature engineering       ingress.yaml
@@ -89,7 +89,49 @@ Every run records:
 |-----|---------|--------------|
 | `train` | git push to main | Train model, log run to MLflow |
 | `evaluate` | after train | Compare vs Production champion on holdout set |
-| `package` | after evaluate passes | Build Docker image, push to ghcr.io, update Repo 2 |
+| `package` | after evaluate passes | Build Docker image, push to ghcr.io |
+
+---
+
+## Railway MLflow Setup
+
+Railway hosts the MLflow tracking server (PostgreSQL + MinIO + Caddy).
+**When you delete and recreate Railway, do these 3 things:**
+
+### 1. Update .env (local)
+
+Open `.env` and replace with new values from Railway dashboard:
+
+```
+MLFLOW_TRACKING_URI=https://your-new-caddy-url.up.railway.app
+MLFLOW_TRACKING_USERNAME=admin
+MLFLOW_TRACKING_PASSWORD=your_new_password
+```
+
+### 2. Reload .env in your terminal (PowerShell)
+
+```powershell
+Get-Content .env | Where-Object { $_ -match '^[^#]' } | ForEach-Object {
+    $k, $v = $_ -split '=', 2
+    [System.Environment]::SetEnvironmentVariable($k.Trim(), $v.Trim(), 'Process')
+}
+```
+
+### 3. Update GitHub Secrets
+
+```
+github.com/kaispace30098/construction-cost-model
+-> Settings -> Secrets and variables -> Actions
+-> Update: MLFLOW_TRACKING_URI, MLFLOW_TRACKING_USERNAME, MLFLOW_TRACKING_PASSWORD
+```
+
+### 4. Verify connection
+
+```powershell
+python src/train.py
+```
+
+Check the new Railway MLflow UI -- a new run should appear.
 
 ---
 
@@ -104,6 +146,12 @@ pip install -r requirements.txt
 # Set environment variables
 cp .env.example .env
 # Fill in MLFLOW_TRACKING_URI, MLFLOW_TRACKING_USERNAME, MLFLOW_TRACKING_PASSWORD
+
+# Load env vars (PowerShell)
+Get-Content .env | Where-Object { $_ -match ''^[^#]'' } | ForEach-Object {
+    $k, $v = $_ -split ''='', 2
+    [System.Environment]::SetEnvironmentVariable($k.Trim(), $v.Trim(), ''Process'')
+}
 
 # Train locally
 python src/train.py
@@ -120,12 +168,26 @@ construction-cost-model/
 |       \-- train-deploy.yml       # CI/CD pipeline
 |-- data/
 |   \-- construction_dataset.csv
+|-- scripts/
+|   \-- download_model.py          # downloads Staging model for Docker build
+|-- serving/
+|   \-- app.py                     # FastAPI wrapper POST /predict GET /health
 |-- src/
 |   |-- preprocess.py              # Feature engineering and 70/15/15 split
 |   |-- train.py                   # Training, logging, holdout evaluation
-|   \-- evaluate.py                # Champion vs challenger (coming next)
+|   \-- evaluate.py                # Champion vs challenger
 |-- .env.example                   # Environment variable template
 |-- .gitignore
-|-- requirements.txt
+|-- Dockerfile                     # Packages FastAPI app + model artifact
+|-- requirements.txt               # Training dependencies
+|-- requirements-serve.txt         # Serving dependencies
 \-- README.md
 ```
+
+---
+
+## What comes next
+
+Repo 2: `construction-cost-gitops`
+- Kubernetes manifests watched by ArgoCD
+- ArgoCD syncs to kind cluster when image tag is updated by this repo CI
