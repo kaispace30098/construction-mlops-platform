@@ -15,6 +15,7 @@ MODEL_NAME = "construction-cost-model"
 TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", f"file:///{_ROOT}/mlruns")
 EXPERIMENT_NAME = "construction-cost-prediction"
 IMPROVEMENT_THRESHOLD = 0.02  # challenger must beat champion by at least 2%
+CHAMPION_ALIAS = "champion"
 
 
 def compute_rmse(model, X, y):
@@ -42,19 +43,19 @@ def get_latest_ci_run(client):
 
 
 def get_champion(client):
+    """Return the model version tagged with the 'champion' alias, or None."""
     try:
-        versions = client.get_latest_versions(MODEL_NAME, stages=["Production"])
-        if versions:
-            return versions[0]
+        mv = client.get_model_version_by_alias(MODEL_NAME, CHAMPION_ALIAS)
+        return mv
     except Exception:
-        pass
-    return None
+        return None
 
 
-def register_as_staging(client, challenger_uri):
+def register_as_champion(client, challenger_uri):
+    """Register challenger and immediately tag it as champion."""
     mv = mlflow.register_model(challenger_uri, MODEL_NAME)
-    client.transition_model_version_stage(MODEL_NAME, mv.version, "Staging")
-    print(f"Registered {MODEL_NAME} v{mv.version} -> Staging")
+    client.set_registered_model_alias(MODEL_NAME, CHAMPION_ALIAS, mv.version)
+    print(f"Registered {MODEL_NAME} v{mv.version} -> alias '{CHAMPION_ALIAS}'")
 
 
 def main():
@@ -72,16 +73,16 @@ def main():
     challenger_rmse = compute_rmse(challenger_model, X_holdout, y_holdout)
     print(f"Challenger RMSE   : {challenger_rmse:.2f}")
 
-    # Champion: current Production model
+    # Champion: model currently tagged with 'champion' alias
     champion_version = get_champion(client)
 
     if champion_version is None:
-        print("No Production champion found. First deployment — registering to Staging.")
-        register_as_staging(client, challenger_uri)
+        print(f"No '{CHAMPION_ALIAS}' alias found. First deployment — registering as champion.")
+        register_as_champion(client, challenger_uri)
         sys.exit(0)
 
     # Compare challenger vs champion on same holdout
-    champion_uri = f"models:/{MODEL_NAME}/Production"
+    champion_uri = f"models:/{MODEL_NAME}@{CHAMPION_ALIAS}"
     champion_model = mlflow.xgboost.load_model(champion_uri)
     champion_rmse = compute_rmse(champion_model, X_holdout, y_holdout)
 
@@ -90,8 +91,8 @@ def main():
     print(f"Improvement       : {improvement:.2%}  (required: {IMPROVEMENT_THRESHOLD:.2%})")
 
     if improvement >= IMPROVEMENT_THRESHOLD:
-        print("Challenger wins. Registering to Staging.")
-        register_as_staging(client, challenger_uri)
+        print("Challenger wins. Promoting to champion.")
+        register_as_champion(client, challenger_uri)
     else:
         print("Challenger did not improve enough. Stopping CI.")
         sys.exit(1)
