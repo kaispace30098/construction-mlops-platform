@@ -62,7 +62,7 @@ jobs:
           MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
           MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
         run: python src/evaluate.py
-        # exits 0 -> challenger wins, registered to Staging
+        # exits 0 -> challenger wins, registered as champion alias
         # exits 1 -> challenger loses, CI stops here
 
   # ----------------------------------------------------------------
@@ -111,9 +111,15 @@ jobs:
       - name: Output image tag
         run: echo "Image pushed ghcr.io/${{ github.repository_owner }}/construction-cost-model:${{ github.sha }}"
 
-      # ── Update Repo 2 image tag (coming next — needs construction-gitops repo) ──
-      # - name: Update GitOps repo
-      #   run: |
-      #     git clone https://x-token:${{ secrets.GITOPS_TOKEN }}@github.com/kaispace30098/construction-gitops.git
-      #     sed -i "s|image:.*|image: ghcr.io/${{ github.repository_owner }}/construction-cost-model:${{ github.sha }}|" construction-gitops/deployment.yaml
-      #     cd construction-gitops && git commit -am "update image to ${{ github.sha }}" && git push
+      - name: Update GitOps repo with new image SHA
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+        run: |
+          git clone https://x-access-token:${GITOPS_TOKEN}@github.com/kaispace30098/construction-cost-gitops.git
+          cd construction-cost-gitops
+          git config user.email "ci@github-actions"
+          git config user.name "GitHub Actions"
+          sed -i "s|image: ghcr.io.*|image: ghcr.io/${{ github.repository_owner }}/construction-cost-model:${{ github.sha }}|" deployment.yaml
+          git add deployment.yaml
+          git diff --staged --quiet || git commit -m "ci: update image to ${{ github.sha }}"
+          git push
